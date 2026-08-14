@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHRONO-SPHERE 3D — Futuristic World Flag Hourglass & Time Machine</title>
+    <meta name="description" content="An interactive miniature universe where time flows through the flags of every country in a 3D physical glass hourglass.">
+    <link rel="stylesheet" href="style.css">
+    <!-- Three.js & OrbitControls CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <!-- 3D WebGL Canvas Layer -->
+    <div id="canvas-container"></div>
+
+    <!-- Top Futuristic Navigation Header -->
+    <header class="top-header">
+        <div class="brand">
+            <span class="brand-icon">⏳</span>
+            <span class="brand-title">CHRONO-SPHERE</span>
+        </div>
+
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-view="world-clock">WORLD CLOCK</button>
+            <button class="nav-tab" data-view="world-flags">WORLD FLAGS</button>
+            <button class="nav-tab" data-view="time-loop">TIME LOOP</button>
+        </nav>
+
+        <div class="header-right">
+            <button class="icon-btn" id="btn-sound">🔊 Sound</button>
+            <button class="icon-btn" id="btn-settings-header">⚙️ Settings</button>
+        </div>
+    </header>
+
+    <!-- UI View Panels Layer -->
+    <main class="ui-layer">
+        
+        <!-- WEBSITE VIEW 1: WORLD CLOCK -->
+        <section class="view-panel active" id="view-world-clock">
+            <div class="hero-title-box">
+                <h1>TIME FLOWS AROUND THE WORLD</h1>
+                <p class="hero-subtitle">Interactive 3D Flag Hourglass & Universal Timekeeper</p>
+            </div>
+
+            <div class="wc-hud-container">
+                <!-- Left Digital Clock HUD -->
+                <div class="clock-card glass-card">
+                    <div class="clock-card-header">
+                        <span class="flag-badge" id="wc-flag-icon">🇮🇳</span>
+                        <div class="country-title-box">
+                            <h3 id="wc-country-name">India</h3>
+                            <p id="wc-capital">New Delhi</p>
+                        </div>
+                    </div>
+
+                    <div class="digital-time" id="wc-digital-clock">00:00:00</div>
+                    <div class="digital-date" id="wc-digital-date">Thu, Aug 13, 2026</div>
+
+                    <div class="tz-meta">
+                        <span class="meta-tag" id="wc-utc">UTC +05:30</span>
+                        <span class="meta-tag" id="wc-timezone">Asia/Kolkata</span>
+                    </div>
+                </div>
+
+                <!-- Right Analog Clock & Country Switcher HUD -->
+                <div class="analog-card glass-card">
+                    <div class="analog-clock-wrap">
+                        <div class="analog-face">
+                            <div class="analog-hand hours" id="analog-hours"></div>
+                            <div class="analog-hand minutes" id="analog-minutes"></div>
+                            <div class="analog-hand seconds" id="analog-seconds"></div>
+                            <div class="center-dot"></div>
+                        </div>
+                    </div>
+                    <button class="select-btn" id="wc-select-country-btn">🌍 Switch Country</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- WEBSITE VIEW 2: WORLD FLAGS -->
+        <section class="view-panel" id="view-world-flags">
+            <div class="hero-title-box">
+                <h1>ONE WORLD. ONE CLOCK.</h1>
+                <p class="hero-subtitle">Highlight & Explore Nations Wrapped as Physical 3D Flag Particles</p>
+            </div>
+
+            <div class="wf-drawer glass-card">
+                <div class="wf-flag-header">
+                    <span class="big-flag" id="wf-flag-icon">🇮🇳</span>
+                    <div>
+                        <h2 id="wf-country-name">India</h2>
+                        <p id="wf-capital" style="color: var(--text-muted); font-size: 0.9rem;">New Delhi</p>
+                    </div>
+                </div>
+
+                <div class="wf-stat-row">
+                    <span>Continent:</span>
+                    <strong id="wf-continent">Asia</strong>
+                </div>
+                <div class="wf-stat-row">
+                    <span>Time Offset:</span>
+                    <strong id="wf-tz">+05:30 (UTC)</strong>
+                </div>
+                <div class="wf-stat-row">
+                    <span>Live Local Time:</span>
+                    <strong id="wf-local-time" style="color: var(--accent-cyan);">00:00:00</strong>
+                </div>
+
+                <button class="select-btn" id="wf-explore-btn" style="margin-top: 1.2rem;">🔍 Explore 45+ Nations</button>
+            </div>
+        </section>
+
+        <!-- WEBSITE VIEW 3: TIME LOOP -->
+        <section class="view-panel" id="view-time-loop">
+            <div class="hero-title-box">
+                <h1>TIME NEVER STOPS</h1>
+                <p class="hero-subtitle">Cinematic Telemetry & Infinite Hourglass Flow Dynamics</p>
+            </div>
+
+            <div class="tl-hud-top">
+                <div class="telemetry-card glass-card">
+                    <div class="label">Total Flag Particles</div>
+                    <div class="val" id="tl-particle-count">2,200</div>
+                </div>
+                <div class="telemetry-card glass-card">
+                    <div class="label">Current Cycle</div>
+                    <div class="val" id="tl-current-cycle">#1</div>
+                </div>
+                <div class="telemetry-card glass-card">
+                    <div class="label">Cycle Progress</div>
+                    <div class="val" id="tl-cycle-progress">0%</div>
+                </div>
+                <div class="telemetry-card glass-card">
+                    <div class="label">Simulation Status</div>
+                    <div class="val" id="tl-status" style="font-size: 1.1rem; margin-top: 6px;">▶ Sand Flowing</div>
+                </div>
+                <div class="telemetry-card glass-card">
+                    <div class="label">Particle Flow Rate</div>
+                    <div class="val" id="tl-flow-rate">45 /s</div>
+                </div>
+            </div>
+
+            <!-- Right Side Camera Controls -->
+            <div class="cam-presets">
+                <button class="cam-preset-btn" data-cam="front">📷 Front View</button>
+                <button class="cam-preset-btn" data-cam="close">🔍 Close-Up</button>
+                <button class="cam-preset-btn" data-cam="top">🪐 Top Down</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Floating Bottom Control Dock -->
+    <div class="bottom-dock glass-card">
+        <button class="dock-btn" id="btn-play-pause">⏯ Pause</button>
+        <button class="dock-btn" id="btn-restart">↻ Restart</button>
+        <button class="dock-btn" id="btn-slow-mo">🐌 Slow Motion</button>
+        <button class="dock-btn" id="btn-countries">🌍 Countries</button>
+        <button class="dock-btn" id="btn-fullscreen">⛶ Fullscreen</button>
+    </div>
+
+    <!-- Footer Legal Navigation -->
+    <footer class="footer-bar">
+        <a href="#" id="link-privacy">Privacy Policy</a>
+        <span>•</span>
+        <a href="#" id="link-terms">Terms & Conditions</a>
+        <span>•</span>
+        <a href="#" id="link-about">About Chrono-Sphere</a>
+        <span>•</span>
+        <a href="#" id="link-contact">Contact Us</a>
+    </footer>
+
+    <!-- Application Scripts -->
+    <script src="js/country-data.js"></script>
+    <script src="js/flag-generator.js"></script>
+    <script src="js/physics-sand.js"></script>
+    <script src="js/three-scene.js"></script>
+    <script src="js/audio-engine.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
