@@ -1,0 +1,24 @@
+{
+  "name": "clock",
+  "version": "1.0.0",
+  "description": "> *\"An interactive miniature universe where time flows through the flags of every country.\"*",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Victorezhil310/Clock.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Victorezhil310/Clock/issues"
+  },
+  "homepage": "https://github.com/Victorezhil310/Clock#readme",
+  "dependencies": {
+    "firebase": "^12.17.1"
+  }
+}
