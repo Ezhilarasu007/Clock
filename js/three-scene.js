@@ -248,6 +248,71 @@ class HourglassScene {
         this.controls.maxDistance = 20;
         this.controls.minDistance = 4;
         this.controls.target.set(0, 0, 0);
+
+        // Target smooth interpolation destination
+        this.targetDestination = new THREE.Vector3(0, 0, 0);
+
+        // Raycasting for Mouse Click Centering & Particle Selection
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+
+        this.renderer.domElement.addEventListener('pointerdown', (e) => {
+            this.pointerDownPos = { x: e.clientX, y: e.clientY };
+        });
+
+        this.renderer.domElement.addEventListener('pointerup', (e) => {
+            // Distinguish click from drag
+            const dist = Math.hypot(e.clientX - (this.pointerDownPos?.x || 0), e.clientY - (this.pointerDownPos?.y || 0));
+            if (dist < 6) {
+                this.onCanvasClick(e);
+            }
+        });
+    }
+
+    onCanvasClick(event) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+
+        // 1. Check Particle Intersections
+        const meshesToTest = this.instancedMeshes.map(item => item.mesh);
+        const particleIntersects = this.raycaster.intersectObjects(meshesToTest, false);
+
+        if (particleIntersects.length > 0) {
+            const hit = particleIntersects[0];
+            const meshObj = hit.object;
+            const instanceId = hit.instanceId;
+
+            // Find country index
+            const countryItem = this.instancedMeshes.find(item => item.mesh === meshObj);
+            if (countryItem) {
+                const cId = this.countryData.findIndex((_, idx) => this.instancedMeshes[idx] === countryItem);
+                if (cId !== -1) {
+                    this.highlightCountry(cId);
+                    if (this.onSelectCountryCallback) {
+                        this.onSelectCountryCallback(this.countryData[cId]);
+                    }
+                }
+            }
+
+            // Get hit point to move camera target
+            if (hit.point) {
+                this.targetDestination.copy(hit.point);
+                if (window.AudioEngine) window.AudioEngine.playClickSound();
+            }
+            return;
+        }
+
+        // 2. Check Glass Mesh Intersection
+        if (this.glassMesh) {
+            const glassIntersects = this.raycaster.intersectObject(this.glassMesh, false);
+            if (glassIntersects.length > 0) {
+                this.targetDestination.copy(glassIntersects[0].point);
+                if (window.AudioEngine) window.AudioEngine.playClickSound();
+            }
+        }
     }
 
     setQualityPreset(presetName) {
@@ -335,6 +400,11 @@ class HourglassScene {
                 item.mesh.setMatrixAt(i, this.dummyMatrix);
             }
             item.mesh.instanceMatrix.needsUpdate = true;
+        }
+
+        // Smoothly interpolate controls.target towards targetDestination when clicked
+        if (this.targetDestination && this.controls) {
+            this.controls.target.lerp(this.targetDestination, 0.08);
         }
 
         this.controls.update();

@@ -7,6 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Default Selected Country (India or first)
     let selectedCountry = countryData.find(c => c.code === 'IN') || countryData[0];
     
+    // Register 3D Click Callback
+    scene.onSelectCountryCallback = (country) => {
+        selectCountry(country);
+    };
+    
     // 2. Initialize Modal Manager
     const modals = new ModalManager(
         countryData,
