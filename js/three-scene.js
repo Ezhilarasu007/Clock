@@ -17,6 +17,14 @@ class HourglassScene {
             'High': 3500,
             'Ultra': 5000
         };
+
+        // Interactive Mouse Roll/Rotate States
+        this.isPointerDown = false;
+        this.pointerStart = { x: 0, y: 0 };
+        this.userRotX = 0;
+        this.userRotZ = 0;
+        this.targetUserRotX = 0;
+        this.targetUserRotZ = 0;
         
         this.initThree();
         this.initLights();
@@ -24,6 +32,7 @@ class HourglassScene {
         this.initFlagParticles();
         this.initDustParticles();
         this.initControls();
+        this.initPointerInteractions();
         
         window.addEventListener('resize', () => this.onWindowResize());
         
@@ -51,7 +60,6 @@ class HourglassScene {
     }
 
     initLights() {
-        // Main Key Light
         const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
         keyLight.position.set(5, 8, 5);
         keyLight.castShadow = true;
@@ -59,12 +67,10 @@ class HourglassScene {
         keyLight.shadow.mapSize.height = 1024;
         this.scene.add(keyLight);
 
-        // Soft Blue/Cyan Fill Light
         const fillLight = new THREE.DirectionalLight(0x4a90e2, 1.2);
         fillLight.position.set(-5, -2, -5);
         this.scene.add(fillLight);
 
-        // Core Ambient Light inside neck
         this.coreLight = new THREE.PointLight(0x00d2ff, 1.5, 6);
         this.coreLight.position.set(0, 0, 0);
         this.scene.add(this.coreLight);
@@ -77,13 +83,11 @@ class HourglassScene {
         this.hourglassGroup = new THREE.Group();
         this.scene.add(this.hourglassGroup);
 
-        // Create Glass Lathe Geometry
         const points = [];
         const segments = 40;
         
-        // Upper & Lower hyperbolic glass curves
         for (let i = 0; i <= segments; i++) {
-            const t = (i / segments) * 2 - 1; // -1 to 1
+            const t = (i / segments) * 2 - 1;
             const y = t * 2.8;
             const absY = Math.abs(y);
             let r;
@@ -98,7 +102,6 @@ class HourglassScene {
 
         const latheGeo = new THREE.LatheGeometry(points, 64);
         
-        // Physical Glass Material
         this.glassMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
             metalness: 0.05,
@@ -118,7 +121,6 @@ class HourglassScene {
         this.glassMesh.receiveShadow = true;
         this.hourglassGroup.add(this.glassMesh);
 
-        // Metallic Support Frame
         this.initMetallicFrame();
     }
 
@@ -136,7 +138,6 @@ class HourglassScene {
             roughness: 0.2
         });
 
-        // Top & Bottom Caps
         const capGeo = new THREE.CylinderGeometry(2.4, 2.4, 0.25, 48);
         const topCap = new THREE.Mesh(capGeo, metalMaterial);
         topCap.position.y = 2.925;
@@ -148,7 +149,6 @@ class HourglassScene {
         bottomCap.castShadow = true;
         this.hourglassGroup.add(bottomCap);
 
-        // Gold Trim Rings
         const ringGeo = new THREE.TorusGeometry(2.42, 0.04, 16, 48);
         const topRing = new THREE.Mesh(ringGeo, goldRingMaterial);
         topRing.position.y = 2.8;
@@ -160,13 +160,11 @@ class HourglassScene {
         bottomRing.rotation.x = Math.PI / 2;
         this.hourglassGroup.add(bottomRing);
 
-        // Center Neck Ring
         const neckRingGeo = new THREE.TorusGeometry(0.42, 0.04, 16, 32);
         const neckRing = new THREE.Mesh(neckRingGeo, goldRingMaterial);
         neckRing.rotation.x = Math.PI / 2;
         this.hourglassGroup.add(neckRing);
 
-        // 3 Vertical Pillars
         const pillarGeo = new THREE.CylinderGeometry(0.08, 0.08, 5.85, 16);
         for (let i = 0; i < 3; i++) {
             const angle = (i / 3) * Math.PI * 2;
@@ -178,7 +176,6 @@ class HourglassScene {
     }
 
     initFlagParticles() {
-        // Generate crisp HD Flag Textures for all countries
         this.flagTextures = FlagTextureGenerator.generateAtlas(this.countryData);
 
         const sphereGeo = new THREE.SphereGeometry(this.physics.particleRadius, 16, 16);
@@ -186,13 +183,11 @@ class HourglassScene {
         this.instancedMeshes = [];
         this.countryParticleIndices = Array.from({ length: this.countryData.length }, () => []);
 
-        // Build mapping of particles to country meshes
         for (let i = 0; i < this.physics.particleCount; i++) {
             const cId = this.physics.countryIds[i];
             this.countryParticleIndices[cId].push(i);
         }
 
-        // Create one InstancedMesh per country flag for efficient texture drawing
         for (let c = 0; c < this.countryData.length; c++) {
             const indices = this.countryParticleIndices[c];
             const count = indices.length;
@@ -248,78 +243,53 @@ class HourglassScene {
         this.controls.maxDistance = 20;
         this.controls.minDistance = 4;
         this.controls.target.set(0, 0, 0);
-
-        // Target smooth interpolation destination
-        this.targetDestination = new THREE.Vector3(0, 0, 0);
-
-        // Raycasting for Mouse Click Centering & Particle Selection
-        this.raycaster = new THREE.Raycaster();
-        this.mouse = new THREE.Vector2();
-
-        this.renderer.domElement.addEventListener('pointerdown', (e) => {
-            this.pointerDownPos = { x: e.clientX, y: e.clientY };
-        });
-
-        this.renderer.domElement.addEventListener('pointerup', (e) => {
-            // Distinguish click from drag
-            const dist = Math.hypot(e.clientX - (this.pointerDownPos?.x || 0), e.clientY - (this.pointerDownPos?.y || 0));
-            if (dist < 6) {
-                this.onCanvasClick(e);
-            }
-        });
     }
 
-    onCanvasClick(event) {
-        const rect = this.renderer.domElement.getBoundingClientRect();
-        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    initPointerInteractions() {
+        const canvas = this.renderer.domElement;
 
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-
-        // 1. Check Particle Intersections
-        const meshesToTest = this.instancedMeshes.map(item => item.mesh);
-        const particleIntersects = this.raycaster.intersectObjects(meshesToTest, false);
-
-        if (particleIntersects.length > 0) {
-            const hit = particleIntersects[0];
-            const meshObj = hit.object;
-            const instanceId = hit.instanceId;
-
-            // Find country index
-            const countryItem = this.instancedMeshes.find(item => item.mesh === meshObj);
-            if (countryItem) {
-                const cId = this.countryData.findIndex((_, idx) => this.instancedMeshes[idx] === countryItem);
-                if (cId !== -1) {
-                    this.highlightCountry(cId);
-                    if (this.onSelectCountryCallback) {
-                        this.onSelectCountryCallback(this.countryData[cId]);
-                    }
-                }
+        canvas.addEventListener('pointerdown', (e) => {
+            // Only trigger direct hourglass rotation if left click / touch
+            if (e.button === 0) {
+                this.isPointerDown = true;
+                this.pointerStart.x = e.clientX;
+                this.pointerStart.y = e.clientY;
             }
+        });
 
-            // Get hit point to move camera target
-            if (hit.point) {
-                this.targetDestination.copy(hit.point);
-                if (window.AudioEngine) window.AudioEngine.playClickSound();
-            }
-            return;
-        }
+        window.addEventListener('pointermove', (e) => {
+            if (!this.isPointerDown) return;
+            const dx = e.clientX - this.pointerStart.x;
+            const dy = e.clientY - this.pointerStart.y;
+            this.pointerStart.x = e.clientX;
+            this.pointerStart.y = e.clientY;
 
-        // 2. Check Glass Mesh Intersection
-        if (this.glassMesh) {
-            const glassIntersects = this.raycaster.intersectObject(this.glassMesh, false);
-            if (glassIntersects.length > 0) {
-                this.targetDestination.copy(glassIntersects[0].point);
-                if (window.AudioEngine) window.AudioEngine.playClickSound();
+            // Tilt & Roll angles
+            this.targetUserRotZ += dx * 0.012;
+            this.targetUserRotX += dy * 0.012;
+
+            // Clamp max tilt angles for satisfying feel
+            this.targetUserRotX = THREE.MathUtils.clamp(this.targetUserRotX, -Math.PI * 0.8, Math.PI * 0.8);
+            this.targetUserRotZ = THREE.MathUtils.clamp(this.targetUserRotZ, -Math.PI * 0.8, Math.PI * 0.8);
+        });
+
+        const onPointerUp = () => {
+            if (this.isPointerDown) {
+                this.isPointerDown = false;
+                // Target auto-resets back to 0 on release!
+                this.targetUserRotX = 0;
+                this.targetUserRotZ = 0;
             }
-        }
+        };
+
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointerleave', onPointerUp);
     }
 
     setQualityPreset(presetName) {
         const count = this.qualitySettings[presetName] || 2200;
         this.particleCount = count;
         
-        // Remove old instanced meshes
         this.instancedMeshes.forEach(item => {
             this.hourglassGroup.remove(item.mesh);
             item.mesh.geometry.dispose();
@@ -344,18 +314,33 @@ class HourglassScene {
         requestAnimationFrame(() => this.animate());
 
         const dt = this.clock.getDelta();
+
+        // Smoothly interpolate user interactive tilt rotation
+        if (this.isPointerDown) {
+            this.userRotX += (this.targetUserRotX - this.userRotX) * 0.15;
+            this.userRotZ += (this.targetUserRotZ - this.userRotZ) * 0.15;
+        } else {
+            // Smooth auto-reset when unclicked!
+            this.userRotX += (0 - this.userRotX) * 0.1;
+            this.userRotZ += (0 - this.userRotZ) * 0.1;
+            this.targetUserRotX = 0;
+            this.targetUserRotZ = 0;
+        }
+
+        // Pass dynamic mouse tilt into physical sand simulation
+        this.physics.setUserTilt(this.userRotX, this.userRotZ);
         
         // Update Physics
         this.physics.update(dt);
 
-        // Visually Rotate 3D Hourglass Mesh Group during Flip
-        this.hourglassGroup.rotation.z = this.physics.hourglassAngle;
+        // Apply combine auto-flip angle + user mouse interactive roll/rotate angles
+        this.hourglassGroup.rotation.z = this.physics.hourglassAngle + this.userRotZ;
+        this.hourglassGroup.rotation.x = this.userRotX;
 
         // Pulse Core Glow Light
         const time = this.clock.getElapsedTime();
         this.coreLight.intensity = 1.2 + Math.sin(time * 2.5) * 0.4;
 
-        // Slow rotate ambient dust
         if (this.dustPoints) {
             this.dustPoints.rotation.y = time * 0.02;
         }
@@ -368,7 +353,6 @@ class HourglassScene {
             const item = this.instancedMeshes[c];
             const isHighlighted = (c === highlightedId);
 
-            // Dynamic Emissive glow for highlighted country
             if (isHighlighted) {
                 item.material.emissive.setHex(0x00e5ff);
                 item.material.emissiveIntensity = 0.6 + Math.sin(time * 6) * 0.3;
@@ -383,7 +367,6 @@ class HourglassScene {
 
                 const scale = isHighlighted ? 1.45 : 1.0;
 
-                // Tumble rotation based on index and movement
                 this.dummyEuler.set(
                     time * 0.5 + particleIdx * 0.1,
                     time * 0.3 + particleIdx * 0.2,
@@ -400,11 +383,6 @@ class HourglassScene {
                 item.mesh.setMatrixAt(i, this.dummyMatrix);
             }
             item.mesh.instanceMatrix.needsUpdate = true;
-        }
-
-        // Smoothly interpolate controls.target towards targetDestination when clicked
-        if (this.targetDestination && this.controls) {
-            this.controls.target.lerp(this.targetDestination, 0.08);
         }
 
         this.controls.update();

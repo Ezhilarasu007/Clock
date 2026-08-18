@@ -21,6 +21,10 @@ class HourglassPhysics {
         this.slowMotionFactor = 1.0;
         this.gravityConstant = 9.81;
         
+        // Dynamic Mouse Tilt States
+        this.userTiltX = 0;
+        this.userTiltZ = 0;
+
         // Loop State
         this.gravitySign = 1; // 1 = falling down (-y), -1 = falling up after rotation (+y)
         this.hourglassAngle = 0; // 0 to Math.PI (180deg)
@@ -40,6 +44,11 @@ class HourglassPhysics {
         this.initParticles();
     }
 
+    setUserTilt(tiltX, tiltZ) {
+        this.userTiltX = tiltX;
+        this.userTiltZ = tiltZ;
+    }
+
     setQuality(particleCount) {
         this.particleCount = particleCount;
         this.positions = new Float32Array(particleCount * 3);
@@ -56,10 +65,8 @@ class HourglassPhysics {
         
         for (let i = 0; i < this.particleCount; i++) {
             const idx = i * 3;
-            // Assign country ID evenly across list
             this.countryIds[i] = i % this.countryCount;
             
-            // Random distribution inside upper bulb (y: 0.4 to 2.6)
             const y = 0.4 + Math.random() * 2.2;
             const rMax = this.getContainerRadius(y) - this.particleRadius - 0.05;
             const angle = Math.random() * Math.PI * 2;
@@ -102,7 +109,6 @@ class HourglassPhysics {
                 this.gravitySign *= -1; // Reverse gravity direction!
                 this.currentCycle++;
             } else {
-                // Smooth easing angle
                 const t = this.flipProgress;
                 const easeT = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
                 const startAngle = (this.currentCycle % 2 === 1) ? 0 : Math.PI;
@@ -110,9 +116,16 @@ class HourglassPhysics {
             }
         }
 
-        // Effective Gravity Vector based on hourglass rotation angle
-        const gY = -this.gravityConstant * this.gravitySign * Math.cos(this.hourglassAngle);
-        const gX = this.gravityConstant * 0.4 * Math.sin(this.hourglassAngle);
+        // Base Effective Gravity Vector
+        let gY = -this.gravityConstant * this.gravitySign * Math.cos(this.hourglassAngle);
+        let gX = this.gravityConstant * 0.4 * Math.sin(this.hourglassAngle);
+        let gZ = 0;
+
+        // Apply Mouse Interactive Tilt Forces
+        if (Math.abs(this.userTiltZ) > 0.001 || Math.abs(this.userTiltX) > 0.001) {
+            gX += Math.sin(this.userTiltZ) * this.gravityConstant * 1.5;
+            gZ += Math.sin(this.userTiltX) * this.gravityConstant * 1.5;
+        }
 
         let countInTargetChamber = 0;
         const targetChamberSign = -this.gravitySign;
@@ -137,6 +150,7 @@ class HourglassPhysics {
                 // 1. Apply Gravity
                 vx += gX * subDt;
                 vy += gY * subDt;
+                vz += gZ * subDt;
 
                 // Damping / Terminal Velocity limit
                 vx *= 0.985;
@@ -157,18 +171,15 @@ class HourglassPhysics {
                     const nx = px / (currentR || 1);
                     const nz = pz / (currentR || 1);
                     
-                    // Reposition onto boundary
                     px = nx * maxR;
                     pz = nz * maxR;
 
-                    // Reflect velocity normal with friction
                     const dot = vx * nx + vz * nz;
                     if (dot > 0) {
                         vx = (vx - 1.4 * dot * nx) * 0.5;
                         vz = (vz - 1.4 * dot * nz) * 0.5;
                     }
 
-                    // Funnel slope push towards bottleneck when in upper neck funnel
                     if (Math.sign(py) === this.gravitySign && Math.abs(py) <= 0.8) {
                         vx -= nx * 0.5 * subDt;
                         vz -= nz * 0.5 * subDt;
@@ -184,7 +195,7 @@ class HourglassPhysics {
                     if (vy < 0) vy = -vy * 0.3;
                 }
 
-                // 4. Narrow Neck Funnel Jittering (Prevent Bottleneck Stalling)
+                // 4. Narrow Neck Funnel Jittering
                 if (Math.abs(py) <= 0.25) {
                     vx += (Math.random() - 0.5) * 0.08;
                     vz += (Math.random() - 0.5) * 0.08;
@@ -210,12 +221,10 @@ class HourglassPhysics {
                         const ny = dy / dist;
                         const nz = dz / dist;
 
-                        // Position Correction
                         px += nx * overlap;
                         py += ny * overlap;
                         pz += nz * overlap;
 
-                        // Velocity Impulse
                         const relVx = vx - this.velocities[n3];
                         const relVy = vy - this.velocities[n3 + 1];
                         const relVz = vz - this.velocities[n3 + 2];
@@ -230,7 +239,6 @@ class HourglassPhysics {
                     }
                 }
 
-                // Write back positions & velocities
                 this.positions[idx] = px;
                 this.positions[idx + 1] = py;
                 this.positions[idx + 2] = pz;
@@ -238,7 +246,6 @@ class HourglassPhysics {
                 this.velocities[idx + 1] = vy;
                 this.velocities[idx + 2] = vz;
 
-                // Count particles inside target (lower) chamber
                 if (Math.sign(py) === targetChamberSign && Math.abs(py) > 0.3) {
                     countInTargetChamber++;
                 }
@@ -247,7 +254,6 @@ class HourglassPhysics {
 
         this.particlesPassed = countInTargetChamber;
 
-        // Check for Cycle Completion -> Trigger Flip!
         const targetRatio = this.particlesPassed / this.particleCount;
         if (targetRatio >= 0.93 && !this.isFlipping) {
             this.triggerFlip();

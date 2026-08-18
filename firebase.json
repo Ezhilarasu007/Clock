@@ -1,6 +1,5 @@
 {
   "hosting": {
-    "site": "clock-e460d-49341",
     "public": ".",
     "ignore": [
       "firebase.json",
