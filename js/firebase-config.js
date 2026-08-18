@@ -8,7 +8,7 @@ const firebaseConfig = {
   projectId: "clock-e460d",
   storageBucket: "clock-e460d.firebasestorage.app",
   messagingSenderId: "570510944860",
-  appId: "1:570510944860:web:f5912f538ce6e3d617d499"
+  appId: "1:570510944860:web:fb724abc2c8bf9e117d499"
 };
 
 // Initialize Firebase
